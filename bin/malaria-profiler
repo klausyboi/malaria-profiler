@@ -13,15 +13,8 @@ def main_version(args):
     print("\Malaria profiler version %s\n" % mlp._VERSION)
 
 def main_profile(args):
-    conf = {
-        "ref":"/home/jody/projects/malaria_profiler/pk/ref/strain_A1_H.1.Icor.fasta",
-        "gff":"/home/jody/projects/malaria_profiler/pk/ref/strain_A1_H.1.Icor.gff3",
-        "bed":"/home/jody/projects/malaria_profiler/pk/ref/genes.bed",
-        "barcode":"/home/jody/projects/malaria_profiler/pk/ref/barcode.bed",
-        "json_db":"/home/jody/projects/malaria_profiler/pk/ref/resistance_db.json",
-        "snpEff_db":"pk",
-        
-    }
+    conf = mlp.get_conf_dict("pk")
+    
     args.tmp_prefix = str(uuid4())
     files_prefix = args.dir+"/"+args.tmp_prefix
     
