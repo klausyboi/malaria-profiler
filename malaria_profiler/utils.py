@@ -17,3 +17,4 @@ def get_conf_dict_with_path(library_path):
 def get_conf_dict(library_prefix):
     library_prefix = "%s/share/malaria-profiler/%s" % (sys.base_prefix,library_prefix)
     return get_conf_dict_with_path(library_prefix)
+

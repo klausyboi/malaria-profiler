@@ -1,15 +1,16 @@
 import setuptools
 
+version = [l.strip() for l in open("malaria_profiler/__init__.py") if "version" in l][0].split('"')[1]
 
 setuptools.setup(
 
-	name="tbprofiler",
+	name="malaria_profiler",
 
-	version="0.0.1",
-	packages=["malariaprofiler","pathogenprofiler"],
-	license="MIT",
-	long_description="Malaria-profiler command line tool",
+	version=version,
+	packages=["malaria_profiler"],
+	license="GPLv3",
+	long_description="Malaria-Profiler command line tool",
 	scripts= [
-		'bin/malaria-profiler'
-	]
+		'scripts/malaria-profiler'
+		],
 )
