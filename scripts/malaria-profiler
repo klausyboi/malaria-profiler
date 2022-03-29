@@ -13,29 +13,29 @@ import atexit
 
 __softwarename__ = "malaria_profiler"
 
-files_prefix = None
 conf = None
 @atexit.register
 def cleanup():
     if "last_traceback" in vars(sys):
-        if files_prefix and not args.no_cleanup:
+        if not args.no_cleanup:
             sys.stderr.write("Cleaning up after failed run\n")
-            for f in glob.glob(files_prefix+"*"):
+            for f in glob.glob(args.files_prefix+"*"):
                 os.remove(f)
         import traceback
         
         if "prefix" in vars(args):
-            outfile = "%s.errlog" % args.prefix
+            outfile = "%s.errlog.txt" % args.prefix
         elif "vcf" in vars(args):
-            outfile = "%s.errlog" % args.vcf.split("/")[-1]
+            outfile = "%s.errlog.txt" % args.vcf.split("/")[-1]
         elif "outfile" in vars(args):
-            outfile = "%s.errlog" % args.outfile
+            outfile = "%s.errlog.txt" % args.outfile
         else:
-            outfile = "%s.errlog" % uuid4()
+            outfile = "%s.errlog.txt" % uuid4()
         with open(outfile, "w") as O:
-            O.write("# tb-profiler error report\n\n")
+            O.write(f"# {args.software_name} error report\n\n")
             O.write("* OS: %s\n" % sys.platform)
             O.write("* Program version: %s\n" % malp.__version__)
+            O.write("* Program version: %s\n" % pp.__version__)
             O.write("* Database version: %s\n" % json.load(open(conf["version"]))["commit"]) if conf else ""
             O.write("* Program call:\n")
             O.write("```\n")
@@ -71,9 +71,6 @@ def main_profile(args):
         os.mkdir(args.dir)
 
     ### Setup prefix for files ###
-    global files_prefix
-    args.tmp_prefix = str(uuid4())
-    files_prefix = args.dir+"/"+args.tmp_prefix
 
     json_output = args.dir+"/"+args.prefix+".results.json"
     text_output = args.dir+"/"+args.prefix+".results.txt"
@@ -87,28 +84,22 @@ def main_profile(args):
         species_db = pp.get_species_db(args.software_name,args.species_db)
 
     
-
     if not args.no_species:
-        ### Run profiling module from pathogen-profiler ###
-        if args.bam==None:
-            species_prediction = malp.check_for_kmers(species_db["kmers"],args.read1,args.read2,threads=args.threads)
-        else:
-            pp.run_cmd(f"samtools fastq {args.bam} > {files_prefix}.fq")
-            species_prediction = malp.check_for_kmers(species_db["kmers"],files_prefix+".fq",threads=args.threads)
+        species_prediction = malp.speciate(args)
     else:
         species_prediction = {}
 
 
-    global conf
     results = {"id":args.prefix,"species": species_prediction}
     results['software_version'] = malp.__version__
-    results['pipeline_software'] = [{"Analysis":"Kmer counting","Program":"dsk"}]
+    results['pipeline_software'] = [{"Analysis":"Kmer counting","Program":"kmc"}]
     results['species_db_version'] = json.load(open(species_db["version"]))
+
     if not args.external_resistance_db and not args.resistance_db:
         if len(species_prediction)==1:
             sys.stderr.write("No resistance database was specified. Attempting to use database based on species prediction...\n")
             db_name = species_prediction[0]["species"].replace(" ","_")
-            conf = malp.get_resistance_db(db_name,fcheck=False)
+            conf = pp.get_resistance_db(args.software_name,db_name,fcheck=False)
         if len(species_prediction)>1 or len(species_prediction)==0 or not os.path.isfile(conf["ref"]):
             if len(species_prediction)>1:
                 sys.stderr.write(f"Multiple species found.\n")
@@ -159,18 +150,18 @@ def main_profile(args):
         elif args.read1 and args.read2 and not args.no_trim:
             # Paired + trimming
             untrimmed_fastq_obj = pp.fastq(args.read1,args.read2)
-            fastq_obj = untrimmed_fastq_obj.trim(files_prefix,threads=args.threads)
+            fastq_obj = untrimmed_fastq_obj.trim(args.files_prefix,threads=args.threads)
         elif args.read1 and not args.read2 and args.no_trim:
             # Unpaired + trimming
             fastq_obj = pp.fastq(args.read1,args.read2)
         elif args.read1 and not args.read2 and not args.no_trim:
             # Unpaired + trimming
             untrimmed_fastq_obj = pp.fastq(args.read1)
-            fastq_obj = untrimmed_fastq_obj.trim(files_prefix,threads=args.threads)
+            fastq_obj = untrimmed_fastq_obj.trim(args.files_prefix,threads=args.threads)
         else:
             exit("\nPlease provide a bam file or a fastq file(s)...Exiting!\n")
         bam_obj = fastq_obj.map_to_ref(
-            ref_file=conf["ref"], prefix=files_prefix,sample_name=args.prefix,
+            ref_file=conf["ref"], prefix=args.files_prefix,sample_name=args.prefix,
             aligner=args.mapper, platform=args.platform, threads=args.threads
         )
         bam_file = bam_obj.bam_file
@@ -186,7 +177,6 @@ def main_profile(args):
    
     args.conf = conf
     args.bam_file = bam_file
-    args.files_prefix = files_prefix
     args.run_delly = run_delly
 
     results.update(malp.malaria_bam_profiler(args))
@@ -214,18 +204,18 @@ def main_profile(args):
 
     ### Move files to respective directories ###
     result_files = {
-        "%s.delly.bcf" % files_prefix: "%s/%s.delly.bcf" % (args.dir,args.prefix),
-        "%s.targets.csq.vcf.gz" % files_prefix: "%s/%s.targets.csq.vcf.gz" % (args.dir,args.prefix),
-        "%s.vcf.gz" % files_prefix: "%s/%s.vcf.gz" % (args.dir,args.prefix),
-        "%s.bam" % files_prefix: "%s/%s.bam" % (args.dir,args.prefix),
-        "%s.bam.bai" % files_prefix: "%s/%s.bam.bai" % (args.dir,args.prefix),
+        "%s.delly.bcf" % args.files_prefix: "%s/%s.delly.bcf" % (args.dir,args.prefix),
+        "%s.targets.csq.vcf.gz" % args.files_prefix: "%s/%s.targets.csq.vcf.gz" % (args.dir,args.prefix),
+        "%s.vcf.gz" % args.files_prefix: "%s/%s.vcf.gz" % (args.dir,args.prefix),
+        "%s.bam" % args.files_prefix: "%s/%s.bam" % (args.dir,args.prefix),
+        "%s.bam.bai" % args.files_prefix: "%s/%s.bam.bai" % (args.dir,args.prefix),
     }
 
     for file,target in result_files.items():
         if os.path.isfile(file):
             os.rename(file,target)
 
-    pp.run_cmd(f"rm {files_prefix}*")
+    pp.run_cmd(f"rm {args.files_prefix}*")
 
 def create_species_db(args):
     pp.create_species_db(args)
@@ -234,6 +224,10 @@ def load_species_db(args):
     pp.load_species_db(args)
 
 def create_resistance_db(args):
+    if not os.path.isfile("genome.fasta") and os.path.isfile("genome.fasta.xz"):
+        pp.run_cmd("xz -d genome.fasta.xz")
+    if not os.path.isfile("genome.gff") and os.path.isfile("genome.gff.xz"):
+        pp.run_cmd("xz -d genome.gff.xz")
     pp.create_db(args)
     if args.load:
         load_resistance_db(args)
@@ -243,6 +237,11 @@ def load_resistance_db(args):
 
 
 def main_speciate(args):
+    if args.external_species_db:
+        species_db = pp.get_species_db(args.software_name,args.external_species_db)
+    else:
+        species_db = pp.get_species_db(args.software_name,args.species_db)
+        
     ### Create folders for results if they don't exist ###
     if pp.nofolder(args.dir):
         os.mkdir(args.dir)
@@ -257,16 +256,10 @@ def main_speciate(args):
     csv_output = args.dir+"/"+args.prefix+".results.csv"
     extra_columns = [x.lower() for x in args.add_columns.split(",")] if args.add_columns else []
 
-    if args.external_species_db:
-        species_db = malp.get_species_db(args.external_species_db)
-    else:
-        species_db = malp.get_species_db(args.species_db)
-
-    if args.bam==None:
-        species_prediction = malp.check_for_kmers(species_db["kmers"],args.read1,args.read2,threads=args.threads)
-    else:
-        pp.run_cmd(f"samtools fastq {args.bam} > {files_prefix}.fq")
-        species_prediction = malp.check_for_kmers(species_db["kmers"],files_prefix+".fq",threads=args.threads)
+    
+    # pp.debug(species_db)
+    
+    species_prediction = malp.speciate(args)
 
     results = {"id":args.prefix,"species": species_prediction}
     results['software_version'] = malp.__version__
@@ -287,21 +280,26 @@ def main_collate(args):
 
 
 def main_update_db(args):
-    if os.path.isdir('ntmdb'):
-        os.chdir('ntmdb')
+    if os.path.isdir('malaria-db'):
+        os.chdir('malaria-db')
         pp.run_cmd('git pull')
         os.chdir('db/')
     else:
-        pp.run_cmd('git clone https://github.com/jodyphelan/ntmdb.git')
-        os.chdir('ntmdb/db/')
+        pp.run_cmd('git clone https://github.com/jodyphelan/malaria-db.git')
+        os.chdir('malaria-db/db/')
     dirs = [d for d in os.listdir() if os.path.isdir(d)]
-    pp.infolog('\nCreating species DB')
-    pp.run_cmd('ntm-profiler create_species_db -p ntmdb --kmers ntm_db.kmers.txt --load')
+    pp.infolog('\nCreating species DB\n')
+    pp.run_cmd('malaria-profiler create_species_db -p plasmodium --kmers malaria.kmers.txt --load')
     for d in dirs:
         os.chdir(d)
-        for species in json.load(open('variables.json'))['species']:
+        pp.debug(d)
+        variables = json.load(open('variables.json'))
+        if "enabled" in variables and variables["enabled"]==False: 
+            os.chdir('../')
+            continue
+        for species in variables['species']:
             pp.infolog(f'\nCreating DB for {species}')
-            pp.run_cmd(f'ntm-profiler create_resistance_db --prefix {species.replace(" ","_")} --csv {d}.csv --load')
+            pp.run_cmd(f'malaria-profiler create_resistance_db --prefix {species.replace(" ","_")} --csv {d}.csv --load')
         os.chdir('../')
 
 
@@ -310,6 +308,8 @@ def main_update_db(args):
 
 parser = argparse.ArgumentParser(description='NTM-Profiler pipeline',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--version', action='version', version="NTM-Profiler version %s" % malp.__version__)
+parser.add_argument('--dir','-d',default=".",help='Storage directory')
+parser.add_argument('--no_cleanup',action="store_true",help="Don't remove temporary files on error")
 subparsers = parser.add_subparsers(help="Task to perform")
 
 
@@ -325,10 +325,11 @@ input.add_argument('--resistance_db',help='Mutation panel name')
 input.add_argument('--external_resistance_db',type=str,help='Path to db files prefix (overrides "--db" parameter)')
 input.add_argument('--species_db',default='plasmodium',help='Mutation panel name')
 input.add_argument('--external_species_db',type=str,help='Path to db files prefix (overrides "--db" parameter)')
+input.add_argument('--mitochondria_seq_name',help='Used when bam/cram file is specified to extract mitochondial reads for species classification')
 
 output=parser_sub.add_argument_group("Output options")
 output.add_argument('--prefix','-p',default="malprofiler",help='Sample prefix for all results generated')
-output.add_argument('--dir','-d',default=".",help='Storage directory')
+# output.add_argument('--dir','-d',default=".",help='Storage directory')
 output.add_argument('--csv',action="store_true",help="Add CSV output")
 output.add_argument('--txt',action="store_true",help="Add text output")
 output.add_argument('--pdf',action="store_true",help="Add PDF output. This requires pdflatex to be installed")
@@ -356,7 +357,7 @@ algorithm.add_argument('--threads','-t',default=1,help='Threads to use',type=int
 other=parser_sub.add_argument_group("Other options")
 other.add_argument('--verbose','-v',default=0, choices=[0,1,2],help="Verbosity increases from 0 to 2",type=int)
 other.add_argument('--version', action='version', version="Malria-Profiler version %s" % malp.__version__)
-other.add_argument('--no_cleanup',action="store_true",help="Don't remove temporary files on error")
+# other.add_argument('--no_cleanup',action="store_true",help="Don't remove temporary files on error")
 other.add_argument('--delly_vcf',help=argparse.SUPPRESS)
 parser_sub.set_defaults(func=main_profile)
 
@@ -364,7 +365,7 @@ parser_sub.set_defaults(func=main_profile)
 parser_sub = subparsers.add_parser('collate', help='Collate results form multiple samples together', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser_sub.add_argument('--outfile','-o',default="malprofiler.collate.txt",help='Sample prefix')
 parser_sub.add_argument('--samples',help='File with samples (one per line)')
-parser_sub.add_argument('--dir','-d',default=".",help='Storage directory')
+# parser_sub.add_argument('--dir','-d',default=".",help='Storage directory')
 parser_sub.add_argument('--suffix',default=".results.json",type=str,help='Input results files suffix')
 parser_sub.add_argument('--format',default="txt",choices=["txt","csv"],type=str,help='Output file type')
 parser_sub.add_argument('--version', action='version', version="Malaria-Profiler version %s" % malp.__version__)
@@ -379,10 +380,11 @@ group.add_argument('--bam','-a',help='BAM file. Make sure it has been generated 
 # input.add_argument('--platform','-m',choices=["illumina","nanopore"],default="illumina",help='NGS Platform used to generate data')
 input.add_argument('--species_db',default='plasmodium',help='Speciation database name')
 input.add_argument('--external_species_db',type=str,help='Path to db files prefix (overrides "--db" parameter)')
+input.add_argument('--mitochondria_seq_name',help='Used when bam/cram file is specified to extract mitochondial reads for species classification')
 
 output=parser_sub.add_argument_group("Output options")
 output.add_argument('--prefix','-p',default="malprofiler",help='File prefix for all results generated')
-output.add_argument('--dir','-d',default=".",help='Storage directory')
+# output.add_argument('--dir','-d',default=".",help='Storage directory')
 output.add_argument('--csv',action="store_true",help="Add CSV output")
 output.add_argument('--txt',action="store_true",help="Add text output")
 output.add_argument('--add_columns',default=None,type=str,help=argparse.SUPPRESS)
@@ -393,7 +395,7 @@ algorithm.add_argument('--threads','-t',default=1,help='Threads to use',type=int
 other=parser_sub.add_argument_group("Other options")
 other.add_argument('--verbose','-v',default=0, choices=[0,1,2],help="Verbosity increases from 0 to 2",type=int)
 other.add_argument('--version', action='version', version="NTM-Profiler version %s" % malp.__version__)
-other.add_argument('--no_cleanup',action="store_true",help="Don't remove temporary files on error")
+# other.add_argument('--no_cleanup',action="store_true",help="Don't remove temporary files on error")
 parser_sub.set_defaults(func=main_speciate)
 
 
@@ -447,8 +449,10 @@ parser_sub.set_defaults(func=load_species_db)
 
 
 args = parser.parse_args()
-if vars(args)=={}:
-    parser.print_help(sys.stderr)
-else:
+if hasattr(args, 'func'):
     args.software_name = __softwarename__
+    args.tmp_prefix = str(uuid4())
+    args.files_prefix = args.dir+"/"+args.tmp_prefix
     args.func(args)
+else:
+    parser.print_help(sys.stderr)
