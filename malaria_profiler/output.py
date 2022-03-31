@@ -123,7 +123,7 @@ def write_text(json_results,conf,outfile,columns = None,reporting_af = 0.0,sep="
     text_strings["other_var_report"] = dict_list2text(json_results["other_variants"],["genome_pos","locus_tag","gene","change","type","freq"],{"genome_pos":"Genome Position","locus_tag":"Locus Tag","freq":"Estimated fraction"},sep=sep)
     text_strings["coverage_report"] = dict_list2text(json_results["qc"]["gene_coverage"], ["gene","locus_tag","cutoff","fraction"],sep=sep) if "gene_coverage" in json_results["qc"] else "NA"
     text_strings["missing_report"] = dict_list2text(json_results["qc"]["missing_positions"],["gene","locus_tag","position","variants","drugs"],sep=sep) if "gene_coverage" in json_results["qc"] else "NA"
-    text_strings["pipeline"] = dict_list2text(json_results["pipeline_software"],["Analysis","Program"],sep=sep)
+    text_strings["pipeline"] = dict_list2text(json_results["pipeline_software"],["Analysis","Program"],sep=text_strings["sep"])
     text_strings["version"] = json_results["software_version"]
     tmp = json_results["species_db_version"]
     text_strings["species_db_version"] = "%(name)s_%(commit)s_%(Author)s_%(Date)s" % tmp
