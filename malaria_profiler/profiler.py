@@ -3,22 +3,24 @@ from copy import deepcopy
 import os
 
 def assign_region(snps_report, conf):
-    condition = [(r[3],int(r[5])) for r in [l.strip().split() for l in open(conf['geo_barcode'])]]
-    # condition = list(set([tuple([x[0], float(x[6])]) for x in snps_report]))
+    condition = set([(r[3],int(r[5])) for r in [l.strip().split() for l in open(conf['geo_barcode'])]])
     region_result = []
     for item in condition:
         sum_snps = sum([it[5] for it in snps_report if it[0] == item[0]])
         region_result.append([item[0], item[1], sum_snps])
     res = [x[0] for x in region_result if x[2] >= x[1]]
 
-    order = conf["geoclassification_order"]
-    if len(res)>1:
-        region = [(sorted(res,key=lambda x:order.index(x)))[0]]
-    elif len(res) == 1:
-        region = res
+    if "geoclassification_order" in conf:
+        order = conf["geoclassification_order"]
+        if len(res)>1:
+            region = [(sorted(res,key=lambda x:order.index(x)))[0]]
+        elif len(res) == 1:
+            region = res
+        else:
+            region = ["Unassigned"]
     else:
-        region = ["Unassigned"]
-    
+        region = res
+
     return(region)
 
 
@@ -31,7 +33,7 @@ def malaria_bam_profiler(args):
         coverage_fraction_threshold=args.coverage_fraction_threshold,
         missing_cov_threshold=args.missing_cov_threshold, samclip=args.no_clip,
         min_depth=args.min_depth,delly_vcf_file=args.delly_vcf,call_wg=args.call_whole_genome,
-        variant_annotations=args.add_variant_annotations
+        variant_annotations=args.add_variant_annotations, coverage_tool=args.coverage_tool
     )
 
     if os.path.isfile(f"{args.conf['library_prefix']}.barcode.bed"):

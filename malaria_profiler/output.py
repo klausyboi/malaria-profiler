@@ -12,7 +12,7 @@ import json
 
 
 def load_text(text_strings):
-        return r"""
+    text = r"""
 Malaria-Profiler report
 =================
 
@@ -26,7 +26,10 @@ Date%(sep)s%(date)s
 Species report
 -----------------
 %(species_report)s
+""" % text_strings
 
+    if "dr_report" in text_strings:
+        text += r"""
 Resistance report
 -----------------
 %(dr_report)s
@@ -39,13 +42,20 @@ Other variants report
 ---------------------
 %(other_var_report)s
 
-Coverage report
----------------------
-%(coverage_report)s
-
 Missing positions report
 ---------------------
 %(missing_report)s
+""" % text_strings
+    else:
+        text += r"""
+Variants report
+---------------------
+%(other_var_report)s
+""" % text_strings
+    text += r"""
+Coverage report
+---------------------
+%(coverage_report)s
 
 Analysis pipeline specifications
 --------------------------------
@@ -55,7 +65,7 @@ Resistance Database version%(sep)s%(resistance_db_version)s
 
 %(pipeline)s
 """ % text_strings
-
+    return text
 
 def load_species_text(text_strings):
         return r"""
@@ -85,15 +95,17 @@ Species Database version%(sep)s%(species_db_version)s
 def write_text(json_results,conf,outfile,columns = None,reporting_af = 0.0,sep="\t"):
     if "dr_variants" not in json_results:
         return write_species_text(json_results,conf,outfile)
-    json_results = get_summary(json_results,conf,columns = columns,reporting_af=reporting_af)
-    json_results["drug_table"] = [[y for y in json_results["drug_table"] if y["Drug"].upper()==d.upper()][0] for d in conf['drugs']]
+    if "drugs" in conf:
+        json_results = get_summary(json_results,conf,columns = columns,reporting_af=reporting_af)
+        json_results["drug_table"] = [[y for y in json_results["drug_table"] if y["Drug"].upper()==d.upper()][0] for d in conf['drugs']]
     for var in json_results["dr_variants"]:
         var["drug"] = ", ".join([d["drug"] for d in var["drugs"]])
     text_strings = {}
     text_strings["id"] = json_results["id"]
     text_strings["date"] = time.ctime()
     text_strings["species_report"] = dict_list2text(json_results["species"],["species","mean"],{"species":"Species","mean":"Mean kmer coverage"},sep=sep)
-    text_strings["dr_report"] = dict_list2text(json_results["drug_table"],["Drug","Genotypic Resistance","Mutations"]+columns if columns else [],sep=sep)
+    if "drugs" in conf:
+        text_strings["dr_report"] = dict_list2text(json_results["drug_table"],["Drug","Genotypic Resistance","Mutations"]+columns if columns else [],sep=sep)
     text_strings["dr_var_report"] = dict_list2text(json_results["dr_variants"],["genome_pos","locus_tag","gene","change","type","freq","drugs.drug"],{"genome_pos":"Genome Position","locus_tag":"Locus Tag","freq":"Estimated fraction","drugs.drug":"Drug"},sep=sep)
     text_strings["other_var_report"] = dict_list2text(json_results["other_variants"],["genome_pos","locus_tag","gene","change","type","freq"],{"genome_pos":"Genome Position","locus_tag":"Locus Tag","freq":"Estimated fraction"},sep=sep)
     text_strings["coverage_report"] = dict_list2text(json_results["qc"]["gene_coverage"], ["gene","locus_tag","cutoff","fraction"],sep=sep) if "gene_coverage" in json_results["qc"] else "NA"
