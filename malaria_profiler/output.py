@@ -100,10 +100,6 @@ Species Database version%(sep)s%(species_db_version)s
 
 
 def write_text(json_results,conf,outfile,columns = None,reporting_af = 0.0,sep="\t"):
-    if sep=="\t":
-        text_strings["sep"] = ": "
-    else:
-        text_strings["sep"] = ","
     if "dr_variants" not in json_results:
         return write_species_text(json_results,conf,outfile)
     if "drugs" in conf:
@@ -112,6 +108,10 @@ def write_text(json_results,conf,outfile,columns = None,reporting_af = 0.0,sep="
     for var in json_results["dr_variants"]:
         var["drug"] = ", ".join([d["drug"] for d in var["drugs"]])
     text_strings = {}
+    if sep=="\t":
+        text_strings["sep"] = ": "
+    else:
+        text_strings["sep"] = ","
     text_strings["id"] = json_results["id"]
     text_strings["date"] = time.ctime()
     text_strings["species_report"] = dict_list2text(json_results["species"],["species","mean"],{"species":"Species","mean":"Mean kmer coverage"},sep=sep)
