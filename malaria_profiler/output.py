@@ -24,9 +24,16 @@ ID%(sep)s%(id)s
 Date%(sep)s%(date)s
 
 Species report
------------------
+--------------
 %(species_report)s
 """ % text_strings
+
+    if "geoclassification" in text_strings:
+        text += r"""
+Geoclassification report
+------------------------
+Species%(sep)s%(geoclassification)s
+"""
 
     if "dr_report" in text_strings:
         text += r"""
@@ -106,6 +113,8 @@ def write_text(json_results,conf,outfile,columns = None,reporting_af = 0.0,sep="
     text_strings["species_report"] = dict_list2text(json_results["species"],["species","mean"],{"species":"Species","mean":"Mean kmer coverage"},sep=sep)
     if "drugs" in conf:
         text_strings["dr_report"] = dict_list2text(json_results["drug_table"],["Drug","Genotypic Resistance","Mutations"]+columns if columns else [],sep=sep)
+    if "geoclassification" in json_results:
+        text_strings["geoclassification"] = ", ".join(json_results["geoclassification"])
     text_strings["dr_var_report"] = dict_list2text(json_results["dr_variants"],["genome_pos","locus_tag","gene","change","type","freq","drugs.drug"],{"genome_pos":"Genome Position","locus_tag":"Locus Tag","freq":"Estimated fraction","drugs.drug":"Drug"},sep=sep)
     text_strings["other_var_report"] = dict_list2text(json_results["other_variants"],["genome_pos","locus_tag","gene","change","type","freq"],{"genome_pos":"Genome Position","locus_tag":"Locus Tag","freq":"Estimated fraction"},sep=sep)
     text_strings["coverage_report"] = dict_list2text(json_results["qc"]["gene_coverage"], ["gene","locus_tag","cutoff","fraction"],sep=sep) if "gene_coverage" in json_results["qc"] else "NA"
