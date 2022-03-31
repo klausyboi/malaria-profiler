@@ -33,7 +33,7 @@ Species report
 Geoclassification report
 ------------------------
 Species%(sep)s%(geoclassification)s
-"""
+""" % text_strings
 
     if "dr_report" in text_strings:
         text += r"""
