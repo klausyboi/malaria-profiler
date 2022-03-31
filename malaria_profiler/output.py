@@ -100,6 +100,10 @@ Species Database version%(sep)s%(species_db_version)s
 
 
 def write_text(json_results,conf,outfile,columns = None,reporting_af = 0.0,sep="\t"):
+    if sep=="\t":
+        text_strings["sep"] = ": "
+    else:
+        text_strings["sep"] = ","
     if "dr_variants" not in json_results:
         return write_species_text(json_results,conf,outfile)
     if "drugs" in conf:
@@ -125,10 +129,7 @@ def write_text(json_results,conf,outfile,columns = None,reporting_af = 0.0,sep="
     text_strings["species_db_version"] = "%(name)s_%(commit)s_%(Author)s_%(Date)s" % tmp
     tmp = json_results["resistance_db_version"]
     text_strings["resistance_db_version"] = "%(name)s_%(commit)s_%(Author)s_%(Date)s" % tmp
-    if sep=="\t":
-        text_strings["sep"] = ": "
-    else:
-        text_strings["sep"] = ","
+
 
     o = open(outfile,"w")
     o.write(load_text(text_strings))
