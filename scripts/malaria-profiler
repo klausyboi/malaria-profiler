@@ -299,7 +299,8 @@ def main_update_db(args):
             continue
         for species in variables['species']:
             pp.infolog(f'\nCreating DB for {species}')
-            pp.run_cmd(f'malaria-profiler create_resistance_db --prefix {species.replace(" ","_")} --csv {d}.csv --load')
+            csv_arg = f"--csv {d}.csv" if os.path.isfile(f"{d}.csv") else ""
+            pp.run_cmd(f'malaria-profiler create_resistance_db --prefix {species.replace(" ","_")} {csv_arg} --load')
         os.chdir('../')
 
 
