@@ -36,8 +36,7 @@ def malaria_bam_profiler(args):
         variant_annotations=args.add_variant_annotations, coverage_tool=args.coverage_tool
     )
 
-    if os.path.isfile(f"{args.conf['library_prefix']}.barcode.bed"):
-        args.conf['geo_barcode'] = f"{args.conf['library_prefix']}.barcode.bed"
+    if "geo_barcode" in args.conf:
         bam_class = bam(args.bam_file,prefix=args.files_prefix,platform=args.platform)
         barcode_mutations = bam_class.get_bed_gt(bed_file=args.conf['geo_barcode'],ref_file=args.conf['ref'],caller=args.caller,platform=args.platform)
         barcode_support,snps_report = get_barcoding_mutations(barcode_mutations,args.conf["geo_barcode"])

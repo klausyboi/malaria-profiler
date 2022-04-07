@@ -99,7 +99,7 @@ def main_profile(args):
         if len(species_prediction)==1:
             sys.stderr.write("No resistance database was specified. Attempting to use database based on species prediction...\n")
             db_name = species_prediction[0]["species"].replace(" ","_")
-            conf = pp.get_resistance_db(args.software_name,db_name,fcheck=False)
+            conf = pp.get_resistance_db(args.software_name,db_name)
         if len(species_prediction)>1 or len(species_prediction)==0 or not os.path.isfile(conf["ref"]):
             if len(species_prediction)>1:
                 sys.stderr.write(f"Multiple species found.\n")
@@ -228,12 +228,13 @@ def create_resistance_db(args):
         pp.run_cmd("xz -d genome.fasta.xz")
     if not os.path.isfile("genome.gff") and os.path.isfile("genome.gff.xz"):
         pp.run_cmd("xz -d genome.gff.xz")
-    pp.create_db(args)
-    if args.load:
-        load_resistance_db(args)
+    extra_files = {}
+    if os.path.isfile("barcode.bed"):
+        extra_files["geo_barcode"] = "barcode.bed"
+    pp.create_db(args,extra_files)
 
-def load_resistance_db(args):
-    pp.load_resistance_db(args,{"geo_barcode":".barcode.bed"})
+# def load_resistance_db(args):
+    # pp.load_resistance_db(args,{"geo_barcode":".barcode.bed"})
 
 
 def main_speciate(args):
@@ -292,7 +293,6 @@ def main_update_db(args):
     pp.run_cmd('malaria-profiler create_species_db -p plasmodium --kmers malaria.kmers.txt --load')
     for d in dirs:
         os.chdir(d)
-        pp.debug(d)
         variables = json.load(open('variables.json'))
         if "enabled" in variables and variables["enabled"]==False: 
             os.chdir('../')
@@ -300,7 +300,8 @@ def main_update_db(args):
         for species in variables['species']:
             pp.infolog(f'\nCreating DB for {species}')
             csv_arg = f"--csv {d}.csv" if os.path.isfile(f"{d}.csv") else ""
-            pp.run_cmd(f'malaria-profiler create_resistance_db --prefix {species.replace(" ","_")} {csv_arg} --load')
+            barcode_arg = f"--csv {d}.csv" if os.path.isfile(f"{d}.csv") else ""
+            pp.run_cmd(f'malaria-profiler create_resistance_db --prefix {species.replace(" ","_")} {csv_arg} --watchlist gene_watchlist.csv --load')
         os.chdir('../')
 
 
@@ -427,10 +428,10 @@ parser_sub.add_argument('--include_original_mutation',action="store_true", help=
 parser_sub.add_argument('--version', action='version', version="NTM-Profiler version %s" % malp.__version__)
 parser_sub.set_defaults(func=create_resistance_db)
 
-parser_sub = subparsers.add_parser('load_resistance_db', help='Load the resistance database files', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser_sub.add_argument('--prefix','-p',type=str,help='The input CSV file containing the mutations',required = True)
-parser_sub.add_argument('--version', action='version', version="NTM-Profiler version %s" % malp.__version__)
-parser_sub.set_defaults(func=load_resistance_db)
+# parser_sub = subparsers.add_parser('load_resistance_db', help='Load the resistance database files', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+# parser_sub.add_argument('--prefix','-p',type=str,help='The input CSV file containing the mutations',required = True)
+# parser_sub.add_argument('--version', action='version', version="NTM-Profiler version %s" % malp.__version__)
+# parser_sub.set_defaults(func=load_resistance_db)
 
 parser_sub = subparsers.add_parser('create_species_db', help='Generate the files required to run speciation with NTM-Profiler', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser_sub.add_argument('--prefix','-p',type=str,help='The name of the database',required = True)
