@@ -9,6 +9,17 @@ from tqdm import tqdm
 import json
 
 
+def write_outputs(args,results):
+    json_output = args.dir+"/"+args.prefix+".results.json"
+    text_output = args.dir+"/"+args.prefix+".results.txt"
+    csv_output = args.dir+"/"+args.prefix+".results.csv"
+    extra_columns = [x.lower() for x in args.add_columns.split(",")] if args.add_columns else []
+    json.dump(results,open(json_output,"w"))
+    if args.txt:
+        write_text(results,args.conf,text_output,extra_columns,reporting_af=args.reporting_af)
+    if args.csv:
+        write_text(results,args.conf,csv_output,extra_columns)
+
 
 
 def load_text(text_strings):
@@ -114,19 +125,18 @@ def write_text(json_results,conf,outfile,columns = None,reporting_af = 0.0,sep="
         text_strings["sep"] = ","
     text_strings["id"] = json_results["id"]
     text_strings["date"] = time.ctime()
-    text_strings["species_report"] = dict_list2text(json_results["species"],["species","mean"],{"species":"Species","mean":"Mean kmer coverage"},sep=sep)
+    text_strings["species_report"] = dict_list2text(json_results["species"]["prediction"],["species","mean"],{"species":"Species","mean":"Mean kmer coverage"},sep=sep)
     if "drugs" in conf:
         text_strings["dr_report"] = dict_list2text(json_results["drug_table"],["Drug","Genotypic Resistance","Mutations"]+columns if columns else [],sep=sep)
     if "geoclassification" in json_results:
         text_strings["geoclassification"] = ", ".join(json_results["geoclassification"])
     text_strings["dr_var_report"] = dict_list2text(json_results["dr_variants"],["genome_pos","locus_tag","gene","change","type","freq","drugs.drug"],{"genome_pos":"Genome Position","locus_tag":"Locus Tag","freq":"Estimated fraction","drugs.drug":"Drug"},sep=sep)
     text_strings["other_var_report"] = dict_list2text(json_results["other_variants"],["genome_pos","locus_tag","gene","change","type","freq"],{"genome_pos":"Genome Position","locus_tag":"Locus Tag","freq":"Estimated fraction"},sep=sep)
-    text_strings["coverage_report"] = dict_list2text(json_results["qc"]["gene_coverage"], ["gene","locus_tag","cutoff","fraction"],sep=sep) if "gene_coverage" in json_results["qc"] else "NA"
-    text_strings["missing_report"] = dict_list2text(json_results["qc"]["missing_positions"],["gene","locus_tag","position","variants","drugs"],sep=sep) if "gene_coverage" in json_results["qc"] else "NA"
+    text_strings["coverage_report"] = dict_list2text(json_results["qc"]["gene_coverage"], ["gene","locus_tag","cutoff","fraction"],sep=sep) if "gene_coverage" in json_results["qc"] else "N/A"
+    text_strings["missing_report"] = dict_list2text(json_results["qc"]["missing_positions"],["gene","locus_tag","position","variants","drugs"],sep=sep) if "missing_positions" in json_results["qc"] else "N/A"
     text_strings["pipeline"] = dict_list2text(json_results["pipeline_software"],["Analysis","Program"],sep=text_strings["sep"])
     text_strings["version"] = json_results["software_version"]
-    tmp = json_results["species_db_version"]
-    text_strings["species_db_version"] = "%(name)s_%(commit)s_%(Author)s_%(Date)s" % tmp
+    text_strings["species_db_version"] = "%(name)s_%(commit)s_%(Author)s_%(Date)s" % json_results["species"]["species_db_version"]
     tmp = json_results["resistance_db_version"]
     text_strings["resistance_db_version"] = "%(name)s_%(commit)s_%(Author)s_%(Date)s" % tmp
 
@@ -140,11 +150,10 @@ def write_species_text(json_results,conf,outfile,sep="\t"):
     text_strings = {}
     text_strings["id"] = json_results["id"]
     text_strings["date"] = time.ctime()
-    text_strings["species_report"] = dict_list2text(json_results["species"],["species","mean"],{"species":"Species","mean":"Mean kmer coverage"},sep=sep)
+    text_strings["species_report"] = dict_list2text(json_results["species"]["prediction"],["species","mean"],{"species":"Species","mean":"Mean kmer coverage"},sep=sep)
     text_strings["pipeline"] = dict_list2text(json_results["pipeline_software"],["Analysis","Program"],sep=sep)
     text_strings["version"] = json_results["software_version"]
-    tmp = json_results["species_db_version"]
-    text_strings["species_db_version"] = "%(name)s_%(commit)s_%(Author)s_%(Date)s" % tmp
+    text_strings["species_db_version"] = "%(name)s_%(commit)s_%(Author)s_%(Date)s" % json_results["species"]["species_db_version"]
     if sep=="\t":
         text_strings["sep"] = ": "
     else:

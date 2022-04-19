@@ -13,7 +13,7 @@ import atexit
 
 __softwarename__ = "malaria_profiler"
 
-conf = None
+
 @atexit.register
 def cleanup():
     if "last_traceback" in vars(sys):
@@ -65,137 +65,73 @@ contents of the error log (%s)
 
 
 def main_profile(args):
+    if args.external_resistance_db:
+        args.resistance_db = args.external_resistance_db
+    if args.external_species_db:
+        args.species_db = args.external_species_db
 
     ### Create folders for results if they don't exist ###
     if pp.nofolder(args.dir):
         os.mkdir(args.dir)
 
-    ### Setup prefix for files ###
+    if args.vcf:
+        args.no_species = True
+        if not args.resistance_db:
+            pp.errlog(
+                "\nSpeciation can't be perfomrmed on a VCF file so a resistance database is needed. "
+                "Specify with --resistance_db or --external_resistance_db\n",
+                ext=True
+            )
 
-    json_output = args.dir+"/"+args.prefix+".results.json"
-    text_output = args.dir+"/"+args.prefix+".results.txt"
-    csv_output = args.dir+"/"+args.prefix+".results.csv"
-    pdf_output = args.dir+"/"+args.prefix+".results.pdf"
-    extra_columns = [x.lower() for x in args.add_columns.split(",")] if args.add_columns else []
 
-    if args.external_species_db:
-        species_db = pp.get_species_db(args.software_name,args.external_species_db)
-    else:
-        species_db = pp.get_species_db(args.software_name,args.species_db)
 
-    
+    results = {
+        "id":args.prefix,
+        "software_version":malp.__version__
+    }
     if not args.no_species:
-        species_prediction = malp.speciate(args)
+        species_prediction = pp.speciate(args)
     else:
-        species_prediction = {}
+        species_prediction = None
+    
+    results.update({
+        "species": species_prediction,
+        "pipeline_software": [{"Analysis":"Kmer counting","Program":"kmc"}]
+    })
+
+    if args.species_only:
+        args.conf = None
+        malp.write_outputs(args,results)
+        pp.successlog("Species prediction finished!")
+        quit(0)
 
 
-    results = {"id":args.prefix,"species": species_prediction}
-    results['software_version'] = malp.__version__
-    results['pipeline_software'] = [{"Analysis":"Kmer counting","Program":"kmc"}]
-    results['species_db_version'] = json.load(open(species_db["version"]))
-
-    if not args.external_resistance_db and not args.resistance_db:
-        if len(species_prediction)==1:
-            sys.stderr.write("No resistance database was specified. Attempting to use database based on species prediction...\n")
-            db_name = species_prediction[0]["species"].replace(" ","_")
-            conf = pp.get_resistance_db(args.software_name,db_name)
-        if len(species_prediction)>1 or len(species_prediction)==0 or not os.path.isfile(conf["ref"]):
-            if len(species_prediction)>1:
-                sys.stderr.write(f"Multiple species found.\n")
-            elif len(species_prediction)==0:
-                sys.stderr.write(f"Species classification failed.\n")
-            elif not os.path.isfile(conf["ref"]):
-                sys.stderr.write(f"No resistance db found for {db_name}.\n")
-            
-            conf = None
-
-            json.dump(results,open(json_output,"w"))
-            if args.txt:
-                malp.write_text(results,conf,text_output,extra_columns,reporting_af=args.reporting_af,sep="\t")
-            if args.csv:
-                malp.write_text(results,conf,text_output,extra_columns,reporting_af=args.reporting_af,sep=",")
-
-            sys.stderr.write("Profiling complete!\n")
-            quit(0)
-        conf = pp.get_resistance_db(args.software_name,db_name)
-    elif args.external_resistance_db:
-        conf = pp.get_resistance_db(args.software_name,args.external_resistance_db)
-    elif args.resistance_db:
-        conf = pp.get_resistance_db(args.software_name,args.resistance_db)
-
-
-
-
-    ### Set up platform dependant parameters ###
-    if args.platform=="nanopore":
-        args.mapper = "minimap2"
-        if args.caller=="gatk":
-            args.caller = "freebayes"
-        args.no_trim=True
-        run_delly = False
-
+    args.conf = pp.get_resistance_db_from_species_prediction(args,species_prediction)
+    if args.conf is None:
+        malp.write_outputs(args,results)
 
     
-
-    ### Create bam file if fastq has been supplied ###
-    if args.bam==None:
-        if args.read1 and args.read2 and args.no_trim:
-            # Paired + no trimming
-            fastq_obj = pp.fastq(args.read1,args.read2)
-        elif args.read1 and args.read2 and not args.no_trim:
-            # Paired + trimming
-            untrimmed_fastq_obj = pp.fastq(args.read1,args.read2)
-            fastq_obj = untrimmed_fastq_obj.trim(args.files_prefix,threads=args.threads)
-        elif args.read1 and not args.read2 and args.no_trim:
-            # Unpaired + trimming
-            fastq_obj = pp.fastq(args.read1,args.read2)
-        elif args.read1 and not args.read2 and not args.no_trim:
-            # Unpaired + trimming
-            untrimmed_fastq_obj = pp.fastq(args.read1)
-            fastq_obj = untrimmed_fastq_obj.trim(args.files_prefix,threads=args.threads)
-        else:
-            exit("\nPlease provide a bam file or a fastq file(s)...Exiting!\n")
-        bam_obj = fastq_obj.map_to_ref(
-            ref_file=conf["ref"], prefix=args.files_prefix,sample_name=args.prefix,
-            aligner=args.mapper, platform=args.platform, threads=args.threads
-        )
-        bam_file = bam_obj.bam_file
-    else:
-        bam_file = args.bam
-
-    if not args.missing_cov_threshold:
-        args.missing_cov_threshold = args.min_depth
-    else:
-        sys.stderr.write("\nWARNING: The --missing_cov_threshold argument is deprecated and will be removed in future releases. This parameter can now be set with --min_depth.\n")
+    args = pp.set_platform_params(args)
+    
+    # Legacy compatibility
+    args.missing_cov_threshold = args.min_depth
 
 
-   
-    args.conf = conf
-    args.bam_file = bam_file
-
-    results.update(malp.malaria_bam_profiler(args))
-
+    results.update(pp.run_profiler(args))
+    if "geo_barcode" in args.conf:
+        results.update(malp.add_geobarcode(args))
 
 
     results["pipeline_software"].extend([
         {"Analysis":"Mapping","Program": args.mapper if not args.bam else "N/A"},
         {"Analysis":"Variant calling","Program":args.caller}
     ])
-    results["resistance_db_version"] = json.load(open(conf["version"]))
+    results["resistance_db_version"] = json.load(open(args.conf["version"]))
 
-    results = malp.reformat(results,conf)
+    results = malp.reformat(results,args.conf)
 
+    malp.write_outputs(args,results)
     
-    
-
-    json.dump(results,open(json_output,"w"))
-    if args.pdf:
-        malp.write_pdf(results,conf,pdf_output)
-    if args.txt:
-        malp.write_text(results,conf,text_output,extra_columns,reporting_af=args.reporting_af)
-    if args.csv:
-        malp.write_text(results,conf,csv_output,extra_columns)
 
     ### Move files to respective directories ###
     result_files = {
@@ -227,48 +163,6 @@ def create_resistance_db(args):
     if os.path.isfile("barcode.bed"):
         extra_files["geo_barcode"] = "barcode.bed"
     pp.create_db(args,extra_files)
-
-# def load_resistance_db(args):
-    # pp.load_resistance_db(args,{"geo_barcode":".barcode.bed"})
-
-
-def main_speciate(args):
-    if args.external_species_db:
-        species_db = pp.get_species_db(args.software_name,args.external_species_db)
-    else:
-        species_db = pp.get_species_db(args.software_name,args.species_db)
-        
-    ### Create folders for results if they don't exist ###
-    if pp.nofolder(args.dir):
-        os.mkdir(args.dir)
-
-    ### Setup prefix for files ###
-    global files_prefix
-    args.tmp_prefix = str(uuid4())
-    files_prefix = args.dir+"/"+args.tmp_prefix
-
-    json_output = args.dir+"/"+args.prefix+".results.json"
-    text_output = args.dir+"/"+args.prefix+".results.txt"
-    csv_output = args.dir+"/"+args.prefix+".results.csv"
-    extra_columns = [x.lower() for x in args.add_columns.split(",")] if args.add_columns else []
-
-    
-    # pp.debug(species_db)
-    
-    species_prediction = malp.speciate(args)
-
-    results = {"id":args.prefix,"species": species_prediction}
-    results['software_version'] = malp.__version__
-    results['pipeline_software'] = [{"Analysis":"Kmer counting","Program":"dsk"}]
-    results['species_db_version'] = json.load(open(species_db["version"]))
-
-    json.dump(results,open(json_output,"w"))
-    if args.txt:
-        malp.write_text(results,species_db,text_output,sep="\t")
-    if args.csv:
-        malp.write_text(results,species_db,csv_output,sep=",")
-
-    pp.successlog("Profiling complete!")
 
 
 def main_collate(args):
@@ -305,7 +199,7 @@ def main_update_db(args):
 
 parser = argparse.ArgumentParser(description='NTM-Profiler pipeline',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--version', action='version', version="NTM-Profiler version %s" % malp.__version__)
-parser.add_argument('--dir','-d',default=".",help='Storage directory')
+
 parser.add_argument('--no_cleanup',action="store_true",help="Don't remove temporary files on error")
 subparsers = parser.add_subparsers(help="Task to perform")
 
@@ -316,7 +210,9 @@ input=parser_sub.add_argument_group("Input options")
 group = input.add_mutually_exclusive_group(required=True)
 group.add_argument('--read1','-1',help='First read file')
 input.add_argument('--read2','-2',help='Second read file')
-group.add_argument('--bam','-a',help='BAM file. Make sure it has been generated using the H37Rv genome (GCA_000195955.2)')
+group.add_argument('--bam','-a',help='BAM file')
+group.add_argument('--fasta','-f',help='Fasta file')
+group.add_argument('--vcf',help='VCF file')
 input.add_argument('--platform','-m',choices=["illumina","nanopore"],default="illumina",help='NGS Platform used to generate data')
 input.add_argument('--resistance_db',help='Mutation panel name')
 input.add_argument('--external_resistance_db',type=str,help='Path to db files prefix (overrides "--db" parameter)')
@@ -325,8 +221,8 @@ input.add_argument('--external_species_db',type=str,help='Path to db files prefi
 input.add_argument('--mitochondria_seq_name',help='Used when bam/cram file is specified to extract mitochondial reads for species classification')
 
 output=parser_sub.add_argument_group("Output options")
-output.add_argument('--prefix','-p',default="malprofiler",help='Sample prefix for all results generated')
-# output.add_argument('--dir','-d',default=".",help='Storage directory')
+output.add_argument('--prefix','-p',default="malaria-profiler",help='Sample prefix for all results generated')
+output.add_argument('--dir','-d',default=".",help='Storage directory')
 output.add_argument('--csv',action="store_true",help="Add CSV output")
 output.add_argument('--txt',action="store_true",help="Add text output")
 output.add_argument('--pdf',action="store_true",help="Add PDF output. This requires pdflatex to be installed")
@@ -344,6 +240,7 @@ algorithm.add_argument('--af',default=0.1,type=float,help='Minimum allele freque
 algorithm.add_argument('--reporting_af',default=0.1,type=float,help='Minimum allele frequency to use variants for prediction')
 algorithm.add_argument('--coverage_fraction_threshold',default=0,type=int,help='Cutoff used to calculate fraction of region covered by <= this value')
 algorithm.add_argument('--missing_cov_threshold',type=int,help='Cutoff used to positions/codons in genes which are missing (this argument has now been merged with --min_depth argument and will be deprecated in future releases)')
+algorithm.add_argument('--species_only',action="store_true",help="Predict species and quit")
 algorithm.add_argument('--no_trim',action="store_true",help="Don't trim files using trimmomatic")
 algorithm.add_argument('--no_flagstat',action="store_true",help="Don't collect flagstats")
 algorithm.add_argument('--no_clip',action="store_false",help="Don't clip reads")
@@ -360,8 +257,11 @@ other.add_argument('--delly_vcf',help=argparse.SUPPRESS)
 parser_sub.set_defaults(func=main_profile)
 
 
+
+
+
 parser_sub = subparsers.add_parser('collate', help='Collate results form multiple samples together', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser_sub.add_argument('--outfile','-o',default="malprofiler.collate.txt",help='Sample prefix')
+parser_sub.add_argument('--outfile','-o',default="malaria-profiler.collate.txt",help='Sample prefix')
 parser_sub.add_argument('--samples',help='File with samples (one per line)')
 parser_sub.add_argument('--dir','-d',default=".",help='Storage directory')
 parser_sub.add_argument('--suffix',default=".results.json",type=str,help='Input results files suffix')
@@ -369,38 +269,13 @@ parser_sub.add_argument('--format',default="txt",choices=["txt","csv"],type=str,
 parser_sub.add_argument('--version', action='version', version="Malaria-Profiler version %s" % malp.__version__)
 parser_sub.set_defaults(func=main_collate)
 
-parser_sub = subparsers.add_parser('speciate', help='Run speciation pipeline', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-input=parser_sub.add_argument_group("Input options")
-group = input.add_mutually_exclusive_group(required=True)
-group.add_argument('--read1','-1',help='First read file')
-input.add_argument('--read2','-2',help='Second read file')
-group.add_argument('--bam','-a',help='BAM file. Make sure it has been generated using the H37Rv genome (GCA_000195955.2)')
-input.add_argument('--platform','-m',choices=["illumina","nanopore"],default="illumina",help='NGS Platform used to generate data')
-input.add_argument('--species_db',default='plasmodium',help='Speciation database name')
-input.add_argument('--external_species_db',type=str,help='Path to db files prefix (overrides "--db" parameter)')
-input.add_argument('--mitochondria_seq_name',help='Used when bam/cram file is specified to extract mitochondial reads for species classification')
-
-output=parser_sub.add_argument_group("Output options")
-output.add_argument('--prefix','-p',default="malprofiler",help='File prefix for all results generated')
-output.add_argument('--dir','-d',default=".",help='Storage directory')
-output.add_argument('--csv',action="store_true",help="Add CSV output")
-output.add_argument('--txt',action="store_true",help="Add text output")
-output.add_argument('--add_columns',default=None,type=str,help=argparse.SUPPRESS)
-
-algorithm=parser_sub.add_argument_group("Algorithm options")
-algorithm.add_argument('--threads','-t',default=1,help='Threads to use',type=int)
-
-other=parser_sub.add_argument_group("Other options")
-other.add_argument('--verbose','-v',default=0, choices=[0,1,2],help="Verbosity increases from 0 to 2",type=int)
-other.add_argument('--version', action='version', version="NTM-Profiler version %s" % malp.__version__)
-# other.add_argument('--no_cleanup',action="store_true",help="Don't remove temporary files on error")
-parser_sub.set_defaults(func=main_speciate)
 
 
 
 # Update database #
 parser_sub = subparsers.add_parser('update_db', help='Update all databases', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser_sub.add_argument('--version', action='version', version="NTM-Profiler version %s" % malp.__version__)
+parser_sub.add_argument('--dir','-d',default=".",help='Storage directory')
 parser_sub.set_defaults(func=main_update_db)
 
 
@@ -420,6 +295,7 @@ parser_sub.add_argument('--db-commit',help='Overrides the commit string of the d
 parser_sub.add_argument('--db-author',help='Overrides the author of the database in the version file')
 parser_sub.add_argument('--db-date',help='Overrides the date of the database in the version file')
 parser_sub.add_argument('--include_original_mutation',action="store_true", help='Include the original mutation (before reformatting) as part of the variant annotaion')
+parser_sub.add_argument('--dir','-d',default=".",help='Storage directory')
 parser_sub.add_argument('--version', action='version', version="NTM-Profiler version %s" % malp.__version__)
 parser_sub.set_defaults(func=create_resistance_db)
 
@@ -431,13 +307,9 @@ parser_sub.add_argument('--db-name',help='Overrides the name of the database in 
 parser_sub.add_argument('--db-commit',help='Overrides the commit string of the database in the version file')
 parser_sub.add_argument('--db-author',help='Overrides the author of the database in the version file')
 parser_sub.add_argument('--db-date',help='Overrides the date of the database in the version file')
+parser_sub.add_argument('--dir','-d',default=".",help='Storage directory')
 parser_sub.add_argument('--version', action='version', version="NTM-Profiler version %s" % malp.__version__)
 parser_sub.set_defaults(func=create_species_db)
-
-parser_sub = subparsers.add_parser('load_species_db', help='Load the species database files', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser_sub.add_argument('--prefix','-p',type=str,help='The name of the database',required = True)
-parser_sub.add_argument('--version', action='version', version="NTM-Profiler version %s" % malp.__version__)
-parser_sub.set_defaults(func=load_species_db)
 
 
 
