@@ -130,8 +130,8 @@ def write_text(json_results,conf,outfile,columns = None,reporting_af = 0.0,sep="
         text_strings["dr_report"] = dict_list2text(json_results["drug_table"],["Drug","Genotypic Resistance","Mutations"]+columns if columns else [],sep=sep)
     if "geoclassification" in json_results:
         text_strings["geoclassification"] = ", ".join(json_results["geoclassification"])
-    text_strings["dr_var_report"] = dict_list2text(json_results["dr_variants"],["genome_pos","locus_tag","gene","change","type","freq","drugs.drug"],{"genome_pos":"Genome Position","locus_tag":"Locus Tag","freq":"Estimated fraction","drugs.drug":"Drug"},sep=sep)
-    text_strings["other_var_report"] = dict_list2text(json_results["other_variants"],["genome_pos","locus_tag","gene","change","type","freq"],{"genome_pos":"Genome Position","locus_tag":"Locus Tag","freq":"Estimated fraction"},sep=sep)
+    text_strings["dr_var_report"] = dict_list2text(json_results["dr_variants"],["chrom","genome_pos","locus_tag","gene","change","type","freq","drugs.drug"],{"chrom":"Chromosome","genome_pos":"Genome Position","locus_tag":"Locus Tag","freq":"Estimated fraction","drugs.drug":"Drug"},sep=sep)
+    text_strings["other_var_report"] = dict_list2text(json_results["other_variants"],["chrom","genome_pos","locus_tag","gene","change","type","freq"],{"chrom":"Chromosome:","genome_pos":"Genome Position","locus_tag":"Locus Tag","freq":"Estimated fraction"},sep=sep)
     text_strings["coverage_report"] = dict_list2text(json_results["qc"]["gene_coverage"], ["gene","locus_tag","cutoff","fraction"],sep=sep) if "gene_coverage" in json_results["qc"] else "N/A"
     text_strings["missing_report"] = dict_list2text(json_results["qc"]["missing_positions"],["gene","locus_tag","position","variants","drugs"],sep=sep) if "missing_positions" in json_results["qc"] else "N/A"
     text_strings["pipeline"] = dict_list2text(json_results["pipeline_software"],["Analysis","Program"],sep=text_strings["sep"])

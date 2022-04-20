@@ -108,8 +108,9 @@ def main_profile(args):
 
     args.conf = pp.get_resistance_db_from_species_prediction(args,species_prediction)
     if args.conf is None:
+        pp.infolog("Can't find database, writing results to file and quitting!")
         malp.write_outputs(args,results)
-
+        quit()
     
     args = pp.set_platform_params(args)
     
