@@ -34,9 +34,9 @@ def cleanup():
         with open(outfile, "w") as O:
             O.write(f"# {args.software_name} error report\n\n")
             O.write("* OS: %s\n" % sys.platform)
-            O.write("* Program version: %s\n" % malp.__version__)
-            O.write("* Program version: %s\n" % pp.__version__)
-            O.write("* Database version: %s\n" % json.load(open(conf["version"]))["commit"]) if conf else ""
+            O.write("* malaria-profiler version: %s\n" % malp.__version__)
+            O.write("* pathogen-profiler version: %s\n" % pp.__version__)
+            O.write("* Database version: %s\n" % args.conf["version"]["commit"]) if "conf" in vars(args) else ""
             O.write("* Program call:\n")
             O.write("```\n")
             O.write("%s\n" % vars(args))
@@ -56,7 +56,7 @@ def cleanup():
 
 This run has failed. Please check all arguments and make sure all input files
 exist. If no solution is found, please open up an issue at
-https://github.com/jodyphelan/Malaria-Profiler/issues/new and paste or attach the
+https://github.com/jodyphelan/malaria-profiler/issues/new and paste or attach the
 contents of the error log (%s)
 
 ###############################################################################
@@ -127,7 +127,7 @@ def main_profile(args):
         {"Analysis":"Mapping","Program": args.mapper if not args.bam else "N/A"},
         {"Analysis":"Variant calling","Program":args.caller}
     ])
-    results["resistance_db_version"] = json.load(open(args.conf["version"]))
+    results["resistance_db_version"] = args.conf["version"]
 
     results = malp.reformat(results,args.conf)
 
