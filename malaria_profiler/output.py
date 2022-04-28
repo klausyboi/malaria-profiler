@@ -2,7 +2,7 @@
 from collections import defaultdict
 import os
 from typing import DefaultDict
-from pathogenprofiler import filecheck, dict_list2text, get_summary, infolog
+from pathogenprofiler import filecheck, dict_list2text, get_summary, infolog, debug
 import csv
 import time
 from tqdm import tqdm
@@ -187,6 +187,7 @@ def collate(args):
     for s in tqdm(samples):
         # Data has the same structure as the .result.json files
         data = json.load(open(filecheck("%s/%s%s" % (args.dir,s,args.suffix))))
+        debug(data["species"])
         species[s] = ";".join([d["species"] for d in data["species"]])
         
         if "resistance_db_version" in data:

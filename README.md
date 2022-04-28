@@ -14,14 +14,34 @@ malaria-profiler update_db
 
 ## Usage
 
-### Fastq input
+### Input types
+
+#### Fastq 
 
 ```bash
 malaria-profiler -1 </path/to/reads_1.fq.gz> -2 </path/to/reads_2.fq.gz> -p <sample_name> -t [threads] --txt 
 ```
 
-### Bam/Cram imput
+#### Bam/Cram 
 
 ```bash
 malaria-profiler -a </path/to/bam/cram> -p <sample_name> -t [threads] --txt
+```
+
+#### Fasta 
+
+```bash
+malaria-profiler -f </path/to/fasta> -p <sample_name> -t [threads] --txt
+```
+
+#### VCF 
+
+```bash
+malaria-profiler -v </path/to/vcf> -p <sample_name> -t [threads] --txt
+```
+
+### Collating results across runs
+
+```bash
+malaria-profiler collate 
 ```
