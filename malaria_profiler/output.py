@@ -187,15 +187,10 @@ def collate(args):
     for s in tqdm(samples):
         # Data has the same structure as the .result.json files
         data = json.load(open(filecheck("%s/%s%s" % (args.dir,s,args.suffix))))
-        debug(data["species"])
-        species[s] = ";".join([d["species"] for d in data["species"]])
+        species[s] = ";".join([d["species"] for d in data["species"]["prediction"]])
         
         if "resistance_db_version" in data:
             dr_samples.add(s)
-            for gene in data["resistance_genes"]:
-                for d in gene["drugs"]:
-                    drugs.add(d["drug"])
-                    dr[s][d["drug"]].append(f"{gene['gene']}_resistance_gene")
         
             for var in data["dr_variants"]:
                 for d in var["drugs"]:
