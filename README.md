@@ -3,13 +3,20 @@
 ## Install
 
 ```
-git clone https://github.com/jodyphelan/malaria-profiler.git
-cd malaria-profiler
+wget  https://raw.githubusercontent.com/jodyphelan/malaria-profiler/main/env.yml
 conda env create -f env.yml 
 conda activate malaria-profiler
-pip install .
+pip install git+https://github.com/jodyphelan/malaria-profiler.git
 pip install git+https://github.com/jodyphelan/pathogen-profiler.git
 malaria-profiler update_db
+```
+
+## Updating
+
+```
+conda activate malaria-profiler
+pip install git+https://github.com/jodyphelan/malaria-profiler.git
+pip install git+https://github.com/jodyphelan/pathogen-profiler.git
 ```
 
 ## Usage
