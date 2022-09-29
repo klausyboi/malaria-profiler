@@ -199,8 +199,8 @@ def main_update_db(args):
 
 #### Argument Parsing ####
 
-parser = argparse.ArgumentParser(description='NTM-Profiler pipeline',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('--version', action='version', version="NTM-Profiler version %s" % malp.__version__)
+parser = argparse.ArgumentParser(description='malaria-profiler pipeline',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument('--version', action='version', version="malaria-profiler version %s" % malp.__version__)
 
 parser.add_argument('--no_cleanup',action="store_true",help="Don't remove temporary files on error")
 subparsers = parser.add_subparsers(help="Task to perform")
@@ -277,7 +277,7 @@ parser_sub.set_defaults(func=main_collate)
 # Update database #
 parser_sub = subparsers.add_parser('update_db', help='Update all databases', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser_sub.add_argument('--branch','-b',default="main",help='Storage directory')
-parser_sub.add_argument('--version', action='version', version="NTM-Profiler version %s" % malp.__version__)
+parser_sub.add_argument('--version', action='version', version="malaria-profiler version %s" % malp.__version__)
 parser_sub.add_argument('--dir','-d',default=".",help='Storage directory')
 parser_sub.set_defaults(func=main_update_db)
 
@@ -285,7 +285,7 @@ parser_sub.set_defaults(func=main_update_db)
 
 
 # Create resistance DB #
-parser_sub = subparsers.add_parser('create_resistance_db', help='Generate the files required to run resistance profiling with NTM-Profiler', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser_sub = subparsers.add_parser('create_resistance_db', help='Generate the files required to run resistance profiling with malaria-profiler', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser_sub.add_argument('--prefix','-p',type=str,help='The name of the database (match species name for automated speciation+resistance detection)',required = True)
 parser_sub.add_argument('--csv','-c',type=str,help='The CSV file containing mutations')
 parser_sub.add_argument('--load',action="store_true",help='Load the library after creating it')
@@ -299,10 +299,10 @@ parser_sub.add_argument('--db-author',help='Overrides the author of the database
 parser_sub.add_argument('--db-date',help='Overrides the date of the database in the version file')
 parser_sub.add_argument('--include_original_mutation',action="store_true", help='Include the original mutation (before reformatting) as part of the variant annotaion')
 parser_sub.add_argument('--dir','-d',default=".",help='Storage directory')
-parser_sub.add_argument('--version', action='version', version="NTM-Profiler version %s" % malp.__version__)
+parser_sub.add_argument('--version', action='version', version="malaria-profiler version %s" % malp.__version__)
 parser_sub.set_defaults(func=create_resistance_db)
 
-parser_sub = subparsers.add_parser('create_species_db', help='Generate the files required to run speciation with NTM-Profiler', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser_sub = subparsers.add_parser('create_species_db', help='Generate the files required to run speciation with malaria-profiler', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser_sub.add_argument('--prefix','-p',type=str,help='The name of the database',required = True)
 parser_sub.add_argument('--kmers',type=str,help='The file containing species specific kmers',required = True)
 parser_sub.add_argument('--load',action="store_true",help='Load the library after creating it')
@@ -311,7 +311,7 @@ parser_sub.add_argument('--db-commit',help='Overrides the commit string of the d
 parser_sub.add_argument('--db-author',help='Overrides the author of the database in the version file')
 parser_sub.add_argument('--db-date',help='Overrides the date of the database in the version file')
 parser_sub.add_argument('--dir','-d',default=".",help='Storage directory')
-parser_sub.add_argument('--version', action='version', version="NTM-Profiler version %s" % malp.__version__)
+parser_sub.add_argument('--version', action='version', version="malaria-profiler version %s" % malp.__version__)
 parser_sub.set_defaults(func=create_species_db)
 
 
