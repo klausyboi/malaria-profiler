@@ -123,7 +123,7 @@ def write_text(json_results,conf,outfile,columns = None,reporting_af = 0.0,sep="
     if "geoclassification" in json_results:
         text_strings["geoclassification"] = ", ".join(json_results["geoclassification"])
     text_strings["dr_report"] = pp.dict_list2text(json_results["drug_table"],["Drug","Genotypic Resistance","Mutations"]+columns if columns else [],sep=sep)
-    text_strings["dr_var_report"] = pp.dict_list2text(json_results["dr_variants"],mappings={"genome_pos":"Genome Position","locus_tag":"Locus Tag","type":"Variant type","change":"Change","freq":"Estimated fraction","drugs.drug":"Drug"},sep=sep)
+    text_strings["dr_var_report"] = pp.dict_list2text(json_results["dr_variants"],mappings={"chrom","genome_pos":"Genome Position","locus_tag":"Locus Tag","type":"Variant type","change":"Change","freq":"Estimated fraction","drugs.drug":"Drug"},sep=sep)
     text_strings["other_var_report"] = pp.dict_list2text(json_results["other_variants"],mappings={"genome_pos":"Genome Position","locus_tag":"Locus Tag","type":"Variant type","change":"Change","freq":"Estimated fraction"},sep=sep)
     text_strings["coverage_report"] = pp.dict_list2text(json_results["qc"]["gene_coverage"], ["gene","locus_tag","cutoff","fraction"],sep=sep) if "gene_coverage" in json_results["qc"] else "N/A"
     text_strings["missing_report"] = pp.dict_list2text(json_results["qc"]["missing_positions"],["gene","locus_tag","position","position_type","drug_resistance_position"],sep=sep) if "missing_report" in json_results["qc"] else "N/A"
