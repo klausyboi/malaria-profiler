@@ -113,20 +113,24 @@ def load_text(text_strings,template = None,file_template=None):
     return t.render(d=text_strings)
 
 def write_text(json_results,conf,outfile,columns = None,reporting_af = 0.0,sep="\t",template_file=None):
-    if "dr_variants" not in json_results:
-        return write_species_text(json_results,outfile)
-    json_results = pp.get_summary(json_results,conf,columns = columns,reporting_af=reporting_af)
-    json_results["drug_table"] = [[y for y in json_results["drug_table"] if y["Drug"].upper()==d.upper()][0] for d in conf["drugs"]]
-    for var in json_results["dr_variants"]:
-        var["drug"] = ", ".join([d["drug"] for d in var["drugs"]])
+    
     text_strings = {}
     text_strings["id"] = json_results["id"]
     text_strings["date"] = time.ctime()
+
+    if "dr_variants" not in json_results:
+        return write_species_text(json_results,outfile)
+    if "drugs" in conf:
+        json_results = pp.get_summary(json_results,conf,columns = columns,reporting_af=reporting_af)
+        json_results["drug_table"] = [[y for y in json_results["drug_table"] if y["Drug"].upper()==d.upper()][0] for d in conf["drugs"]]
+        text_strings["dr_report"] = pp.dict_list2text(json_results["drug_table"],["Drug","Genotypic Resistance","Mutations"]+columns if columns else [],sep=sep)
+    for var in json_results["dr_variants"]:
+        var["drug"] = ", ".join([d["drug"] for d in var["drugs"]])
     if json_results["species"] is not None:
         text_strings["species_report"] = pp.dict_list2text(json_results["species"]["prediction"],["species","mean"],{"species":"Species","mean":"Mean kmer coverage"},sep=sep)
     if "geoclassification" in json_results:
         text_strings["geoclassification"] = ", ".join(json_results["geoclassification"])
-    text_strings["dr_report"] = pp.dict_list2text(json_results["drug_table"],["Drug","Genotypic Resistance","Mutations"]+columns if columns else [],sep=sep)
+
     text_strings["dr_var_report"] = pp.dict_list2text(json_results["dr_variants"],mappings={"chrom":"Chromosome","genome_pos":"Genome Position","locus_tag":"Locus Tag","type":"Variant type","change":"Change","freq":"Estimated fraction","drugs.drug":"Drug"},sep=sep)
     text_strings["other_var_report"] = pp.dict_list2text(json_results["other_variants"],mappings={"chrom":"Chromosome","genome_pos":"Genome Position","locus_tag":"Locus Tag","type":"Variant type","change":"Change","freq":"Estimated fraction"},sep=sep)
     text_strings["coverage_report"] = pp.dict_list2text(json_results["qc"]["gene_coverage"], ["gene","locus_tag","cutoff","fraction"],sep=sep) if "gene_coverage" in json_results["qc"] else "N/A"
