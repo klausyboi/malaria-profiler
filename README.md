@@ -84,9 +84,6 @@ Species prediction is performed by looking for pre-detemined kmers in read files
 ### Resistance prediction
 Resistance prediction is performed by aligning the read data to a species-specific reference genome and looking for resistance associated genes and variants. The reference and resistance database is stored in the [malaria-db github repo](https://github.com/jodyphelan/malaria-db). At the moment resistance prediction is available for:
 
-* _Mycobacterium leprae_
-* _Mycobacteroides abscessus subsp. abscessus_
-* _Mycobacteroides abscessus subsp. bolletii_
-* _Mycobacteroides abscessus subsp. massiliense_
+* _Plasmodium falciparum_
 
 If you would like to suggest another organism please leave a comment in [this thread](https://github.com/jodyphelan/malaria-profiler/).
