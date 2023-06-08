@@ -3,7 +3,7 @@ from collections import defaultdict
 import os
 from typing import DefaultDict
 import pathogenprofiler as pp
-from pathogenprofiler import infolog, debug 
+from pathogenprofiler import infolog, debug, filecheck
 import csv
 import time
 from tqdm import tqdm
@@ -236,11 +236,12 @@ def collate(args):
     dr = defaultdict(lambda: defaultdict(list))
     drugs = set()
     dr_samples = set()
+    sample_data = defaultdict(dict)
     for s in tqdm(samples):
         # Data has the same structure as the .result.json files
         data = json.load(open(filecheck("%s/%s%s" % (args.dir,s,args.suffix))))
         species[s] = ";".join([d["species"] for d in data["species"]["prediction"]])
-        
+        sample_data[s]['median_dp'] = data["qc"]["median_coverage"]
         if "resistance_db_version" in data:
             dr_samples.add(s)
         
@@ -253,7 +254,8 @@ def collate(args):
     for s in samples:
         result = {
             "id": s,
-            "species": species[s]
+            "species": species[s],
+            "median_dp": sample_data[s]['median_dp']
         }
         for d in sorted(drugs):
             if s in dr_samples:
