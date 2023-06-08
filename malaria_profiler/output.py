@@ -255,7 +255,7 @@ def collate(args):
         result = {
             "id": s,
             "species": species[s],
-            "median_dp": sample_data[s]['median_dp']
+            "median_dp": sample_data[s]['region_median_depth']
         }
         for d in sorted(drugs):
             if s in dr_samples:
