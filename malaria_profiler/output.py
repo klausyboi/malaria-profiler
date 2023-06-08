@@ -241,7 +241,7 @@ def collate(args):
         # Data has the same structure as the .result.json files
         data = json.load(open(filecheck("%s/%s%s" % (args.dir,s,args.suffix))))
         species[s] = ";".join([d["species"] for d in data["species"]["prediction"]])
-        sample_data[s]['median_dp'] = data["qc"]["median_coverage"]
+        sample_data[s]['region_median_depth'] = data["qc"]["region_median_depth"]
         if "resistance_db_version" in data:
             dr_samples.add(s)
         
@@ -255,7 +255,7 @@ def collate(args):
         result = {
             "id": s,
             "species": species[s],
-            "median_dp": sample_data[s]['region_median_depth']
+            "region_median_depth": sample_data[s]['region_median_depth']
         }
         for d in sorted(drugs):
             if s in dr_samples:
