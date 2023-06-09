@@ -138,8 +138,8 @@ def write_text(json_results,conf,outfile,columns = None,reporting_af = 0.0,sep="
     text_strings["pipeline"] = pp.dict_list2text(json_results["pipeline_software"],["Analysis","Program"],sep=sep)
     text_strings["version"] = json_results["software_version"]
     debug(json_results["species"]["species_db_version"])
-    text_strings["species_db_version"] = "%(name)s_%(commit)s_%(Author)s_%(Date)s" % json_results["species"]["species_db_version"] if "species_db_version" in json_results['species'] else "N/A"
-    text_strings["resistance_db_version"] = "%(name)s_%(commit)s_%(Author)s_%(Date)s" % json_results["resistance_db_version"] if "resistance_db_version" in json_results else "N/A"
+    text_strings["species_db_version"] = "%(name)s_%(Author)s_%(Date)s" % json_results["species"]["species_db_version"] if "species_db_version" in json_results['species'] else "N/A"
+    text_strings["resistance_db_version"] = "%(name)s_%(Author)s_%(Date)s" % json_results["resistance_db_version"] if "resistance_db_version" in json_results else "N/A"
     if sep=="\t":
         text_strings["sep"] = ": "
     else:
